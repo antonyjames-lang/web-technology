@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="loginLabApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AngularJS Login Form</title>
+  <link rel="stylesheet" href="login-lab.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+  <script src="login-lab.js"></script>
+</head>
+<body ng-controller="LoginCtrl">
+  <main class="login-layout">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Web Technology Lab</p>
+      <h1 id="page-title">AngularJS<br>Login Form</h1>
+      <p class="intro-copy">Sign in with your Gmail address and a one-time verification code.</p>
+      <div class="step-note" aria-hidden="true"><span>01</span> Verify your email <i></i><span>02</span> Sign in</div>
+    </section>
+
+    <section class="login-panel" aria-live="polite">
+      <div ng-if="!login.signedIn">
+        <div class="panel-heading">
+          <p class="eyebrow">Citizen access</p>
+          <h2 ng-if="!login.otpRequested">Welcome back</h2>
+          <h2 ng-if="login.otpRequested">Check your inbox</h2>
+          <p ng-if="!login.otpRequested">Enter your Gmail address to receive a sign-in code.</p>
+          <p ng-if="login.otpRequested">Enter the six-digit code sent to <strong>{{login.email}}</strong>.</p>
+        </div>
+
+        <div class="notice" ng-if="login.devOtp && login.otpRequested" role="status">
+          <span class="notice-label">Development code</span>
+          <strong>{{login.devOtp}}</strong>
+          <button type="button" class="text-button" ng-click="fillDevOtp()">Use this code</button>
+        </div>
+
+        <form name="emailForm" ng-if="!login.otpRequested" ng-submit="requestOtp(emailForm)" novalidate>
+          <label for="email">Gmail address</label>
+          <input id="email" name="email" type="email" ng-model="login.email" ng-pattern="gmailPattern"
+            placeholder="name@gmail.com" autocomplete="email" required>
+          <p class="field-error" ng-if="emailForm.email.$touched && emailForm.email.$error.required">Enter your Gmail address.</p>
+          <p class="field-error" ng-if="emailForm.email.$touched && emailForm.email.$error.email">Enter a valid email address.</p>
+          <p class="field-error" ng-if="emailForm.email.$touched && emailForm.email.$error.pattern">Use an @gmail.com address.</p>
+          <button class="submit-button" type="submit" ng-disabled="login.loading || emailForm.$invalid">
+            {{login.loading ? 'Sending code...' : 'Send sign-in code'}}
+          </button>
+        </form>
+
+        <form name="codeForm" ng-if="login.otpRequested" ng-submit="verifyOtp(codeForm)" novalidate>
+          <label for="code">Six-digit code</label>
+          <input id="code" name="code" class="code-input" type="text" ng-model="login.code"
+            ng-pattern="codePattern" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+            placeholder="000000" required>
+          <p class="field-error" ng-if="codeForm.code.$touched && codeForm.code.$invalid">Enter the six-digit code.</p>
+          <button class="submit-button" type="submit" ng-disabled="login.loading || codeForm.$invalid">
+            {{login.loading ? 'Verifying...' : 'Verify and sign in'}}
+          </button>
+          <div class="form-actions">
+            <button type="button" class="text-button" ng-click="changeEmail()">Change email</button>
+            <button type="button" class="text-button" ng-click="requestOtp(codeForm, true)" ng-disabled="login.loading">Resend code</button>
+          </div>
+        </form>
+
+        <p class="form-message error-message" ng-if="login.error" role="alert">{{login.error}}</p>
+        <p class="form-message success-message" ng-if="login.message" role="status">{{login.message}}</p>
+      </div>
+
+      <div class="signed-in" ng-if="login.signedIn">
+        <p class="eyebrow">Sign-in complete</p>
+        <h2>You're signed in.</h2>
+        <p>Authenticated as <strong>{{login.email}}</strong>.</p>
+        <button class="submit-button" type="button" ng-click="signOut()">Sign out</button>
+      </div>
+      <p class="security-note" ng-if="!login.signedIn">A one-time code keeps your account password-free.</p>
+    </section>
+  </main>
+</body>
+</html>

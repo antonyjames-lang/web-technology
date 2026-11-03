@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="yojanaMitraApp" ng-controller="MainCtrl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yojana Mitra — Government Scheme Eligibility Identifier</title>
+  <meta name="description" content="Discover Indian government welfare schemes you qualify for with instant multi-category eligibility matching and official portal links.">
+  
+  <!-- Favicon / Civic Emblem -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%230e1e38'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23f59e0b' stroke-width='6'/><circle cx='50' cy='50' r='8' fill='%23f59e0b'/></svg>">
+
+  <!-- Classic AngularJS 1.8.3 (CDN) -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+
+  <!-- Google Fonts: Cinzel (Official Serif), Merriweather, Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Merriweather:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Indian National Tricolor Ribbon -->
+  <div class="civic-ribbon"></div>
+
+  <!-- Header & Navigation Bar -->
+  <header class="header-bar">
+    <div class="header-container">
+      <div class="brand-wrapper" ng-click="token ? currentScreen = 'dashboard' : currentScreen = 'welcome'">
+        <div class="emblem-icon" title="National Civic Emblem">
+          &#x269C;
+        </div>
+        <div class="brand-text">
+          <h1>Yojana Mitra</h1>
+          <span>Government Scheme Eligibility Identifier</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Navigation Buttons (if authenticated) -->
+        <button ng-if="token" class="nav-link-btn" ng-class="{'active': currentScreen === 'dashboard'}" ng-click="currentScreen = 'dashboard'">
+          &#x1F3DB; Dashboard
+        </button>
+        <button ng-if="token" class="nav-link-btn" ng-class="{'active': currentScreen === 'form'}" ng-click="openEditProfileWizard()">
+          &#x270E; Edit Criteria
+        </button>
+        <button ng-if="token" class="nav-link-btn" ng-class="{'active': currentScreen === 'profile'}" ng-click="openProfile()">
+          &#x1F464; Profile &amp; Saved ({{stats.saved}})
+        </button>
+
+        <!-- Theme Toggle (Light / Dark) -->
+        <button class="theme-toggle-btn" ng-click="toggleTheme()" title="Toggle Dark/Light Mode">
+          <span ng-if="theme === 'light'">&#x263E;</span>
+          <span ng-if="theme === 'dark'">&#x2600;</span>
+        </button>
+
+        <!-- Logout Button -->
+        <button ng-if="token" class="nav-link-btn" ng-click="logout()" title="Sign Out">
+          &#x23FB; Sign Out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container with ng-switch -->
+  <main class="main-wrapper" ng-switch="currentScreen">
+
+    <!-- Top Civic Notice Strip -->
+    <div class="civic-notice-strip">
+      <div class="civic-notice-text">
+        <span class="badge-official">Govt of India &amp; States</span>
+        <span>Transparent, direct civic benefit matching across 25 identity taxonomies. Direct DBT integration info.</span>
+      </div>
+      <div>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">&#x1F512; Official Portal Links Only</span>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         SCREEN 1: WELCOME & LOGIN SCREEN (GMAIL OTP AUTH)
+         ==================================================================== -->
+    <div ng-switch-when="welcome" class="welcome-container">
+      <div class="welcome-hero">
+        <h2>Unlock Every <span class="highlight">Welfare Scheme</span> You Truly Deserve</h2>
+        <p class="welcome-desc">
+          Yojana Mitra scans central and state government schemes against your personal, financial, and occupational profile — instantly identifying exact eligibility conditions with official government links.
+        </p>
+
+        <div class="civic-features-grid">
+          <div class="feature-pill">
+            <div class="feature-icon-box">&#x1F50E;</div>
+            <div class="feature-info">
+              <h4>25-Group Taxonomy</h4>
+              <p>Multi-persona matching for farmers, students, women, artisans, Divyangjan, and more.</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <div class="feature-icon-box">&#x2714;</div>
+            <div class="feature-info">
+              <h4>Transparent Checklist</h4>
+              <p>Clear line-by-line reasons showing why each scheme passed or failed your criteria.</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <div class="feature-icon-box">&#x1F310;</div>
+            <div class="feature-info">
+              <h4>Real Government Portals</h4>
+              <p>Direct links to official .gov.in &amp; .nic.in portals with step-by-step guides.</p>
+            </div>
+          </div>
+          <div class="feature-pill">
+            <div class="feature-icon-box">&#x1F510;</div>
+            <div class="feature-info">
+              <h4>Passwordless Gmail OTP</h4>
+              <p>No passwords required. Secure 6-digit email verification token.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auth Card -->
+      <div class="auth-card">
+        <div class="auth-header">
+          <h3>Citizen Sign In</h3>
+          <p>Enter your Gmail address to verify your identity</p>
+        </div>
+
+        <div class="auth-step-indicator">
+          <div class="step-dot" ng-class="{'active': !authForm.otpRequested, 'completed': authForm.otpRequested}">1</div>
+          <div class="step-line" ng-class="{'active': authForm.otpRequested}"></div>
+          <div class="step-dot" ng-class="{'active': authForm.otpRequested}">2</div>
+        </div>
+
+        <!-- Dev Mode OTP Banner (if returned in dev mode) -->
+        <div class="dev-otp-banner" ng-if="authForm.devOtp && authForm.otpRequested">
+          <strong>&#x26A0; Development Mode Active:</strong>
+          <div>Your 6-digit OTP is:</div>
+          <div class="dev-otp-code">{{authForm.devOtp}}</div>
+          <div>
+            <button class="dev-otp-btn" ng-click="fillDevOtp()">Auto-Fill OTP</button>
+          </div>
+        </div>
+
+        <!-- Step 1: Request OTP Form -->
+        <form ng-if="!authForm.otpRequested" ng-submit="requestOtp()">
+          <div class="form-group">
+            <label class="form-label" for="gmailInput">Gmail Address</label>
+            <input
+              id="gmailInput"
+              type="email"
+              class="input-control"
+              placeholder="e.g. yourname@gmail.com"
+              ng-model="authForm.email"
+              required
+              autocomplete="email"
+            >
+            <p class="input-hint">&#x2139; Only valid <strong>@gmail.com</strong> accounts are accepted.</p>
+          </div>
+
+          <div ng-if="authForm.errorMsg" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem;">
+            &#x26A0; {{authForm.errorMsg}}
+          </div>
+
+          <button type="submit" class="btn-primary" ng-disabled="authForm.loading">
+            <span ng-if="!authForm.loading">&#x2709; Send 6-Digit OTP</span>
+            <span ng-if="authForm.loading">&#x23F3; Sending Code...</span>
+          </button>
+        </form>
+
+        <!-- Step 2: Verify OTP Form -->
+        <form ng-if="authForm.otpRequested" ng-submit="verifyOtp()">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
+              {{authForm.email}}
+              <a href="" ng-click="authForm.otpRequested = false; authForm.devOtp = null" style="font-size: 0.8rem; color: var(--marigold); margin-left: 0.5rem; text-decoration: none;">Change</a>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="otpInput">Enter 6-Digit Verification Code</label>
+            <input
+              id="otpInput"
+              type="text"
+              maxlength="6"
+              class="input-control"
+              placeholder="123456"
+              style="letter-spacing: 6px; font-size: 1.3rem; text-align: center; font-weight: 700;"
+              ng-model="authForm.code"
+              required
+              autocomplete="one-time-code"
+            >
+            <p class="input-hint">Code expires in 10 minutes.</p>
+          </div>
+
+          <div ng-if="authForm.errorMsg" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem;">
+            &#x26A0; {{authForm.errorMsg}}
+          </div>
+
+          <button type="submit" class="btn-primary" ng-disabled="authForm.loading">
+            <span ng-if="!authForm.loading">&#x2714; Verify &amp; Discover Schemes</span>
+            <span ng-if="authForm.loading">&#x23F3; Verifying OTP...</span>
+          </button>
+
+          <div style="text-align: center; margin-top: 1rem;">
+            <a href="" ng-click="requestOtp()" style="font-size: 0.85rem; color: var(--text-secondary); text-decoration: underline;">Resend OTP</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         SCREEN 2: ELIGIBILITY FORM (MULTI-STEP WIZARD)
+         ==================================================================== -->
+    <div ng-switch-when="form" class="form-wizard-card">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="font-family: var(--font-heading); font-size: 2rem; color: var(--text-primary); margin-bottom: 0.5rem;">
+          Citizen Eligibility Profiler
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Define your socio-economic identity so the engine can accurately match welfare schemes.
+        </p>
+      </div>
+
+      <!-- Step Navigation -->
+      <div class="wizard-progress">
+        <div class="wizard-connecting-bar"></div>
+        <div class="wizard-step-node" ng-class="{'active': formStep === 1, 'completed': formStep > 1}" ng-click="setFormStep(1)">
+          <div class="wizard-node-circle">1</div>
+          <div class="wizard-node-label">Personal Details</div>
+        </div>
+        <div class="wizard-step-node" ng-class="{'active': formStep === 2, 'completed': formStep > 2}" ng-click="setFormStep(2)">
+          <div class="wizard-node-circle">2</div>
+          <div class="wizard-node-label">Household &amp; Finances</div>
+        </div>
+        <div class="wizard-step-node" ng-class="{'active': formStep === 3, 'completed': formStep > 3}" ng-click="setFormStep(3)">
+          <div class="wizard-node-circle">3</div>
+          <div class="wizard-node-label">Categories &amp; Persona</div>
+        </div>
+      </div>
+
+      <!-- WIZARD STEP 1: Personal Details -->
+      <div ng-show="formStep === 1">
+        <h3 style="font-family: var(--font-heading); font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--text-primary);">
+          Step 1: Personal Demographics
+        </h3>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="profName">Full Name *</label>
+            <input id="profName" type="text" class="input-control" placeholder="e.g. Ramesh Kumar Sharma" ng-model="profileForm.name" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profAge">Age (Years) *</label>
+            <input id="profAge" type="number" min="1" max="110" class="input-control" ng-model="profileForm.age" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <div class="radio-pill-group">
+              <label class="radio-pill-item">
+                <input type="radio" name="gender" value="Male" ng-model="profileForm.gender">
+                <span class="radio-pill-label">&#x1F468; Male</span>
+              </label>
+              <label class="radio-pill-item">
+                <input type="radio" name="gender" value="Female" ng-model="profileForm.gender">
+                <span class="radio-pill-label">&#x1F469; Female</span>
+              </label>
+              <label class="radio-pill-item">
+                <input type="radio" name="gender" value="Other" ng-model="profileForm.gender">
+                <span class="radio-pill-label">&#x26A7; Other</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profState">Domicile State / UT *</label>
+            <select id="profState" class="input-control" ng-model="profileForm.state">
+              <option ng-repeat="st in statesList" value="{{st}}">{{st}}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Living Habitat Area *</label>
+            <div class="radio-pill-group">
+              <label class="radio-pill-item">
+                <input type="radio" name="area" value="Rural" ng-model="profileForm.area">
+                <span class="radio-pill-label">&#x1F33E; Rural Village</span>
+              </label>
+              <label class="radio-pill-item">
+                <input type="radio" name="area" value="Urban" ng-model="profileForm.area">
+                <span class="radio-pill-label">&#x1F3D9; Urban / Town</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profOcc">Primary Occupation</label>
+            <input id="profOcc" type="text" class="input-control" placeholder="e.g. Small Farmer, Electrician, Student" ng-model="profileForm.occupation">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+          <button type="button" class="btn-accent" ng-click="setFormStep(2)">
+            Next: Household &amp; Finances &#x2192;
+          </button>
+        </div>
+      </div>
+
+      <!-- WIZARD STEP 2: Household & Financial Details -->
+      <div ng-show="formStep === 2">
+        <h3 style="font-family: var(--font-heading); font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--text-primary);">
+          Step 2: Household &amp; Economic Criteria
+        </h3>
+
+        <div class="form-group">
+          <label class="form-label" for="profIncome">
+            Annual Family Household Income (in &#x20B9; INR)
+          </label>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <input id="profIncome" type="number" step="5000" min="0" max="2500000" class="input-control" style="font-size: 1.2rem; font-weight: 700; max-width: 320px;" ng-model="profileForm.income">
+            <span style="font-weight: 600; color: var(--marigold-hover); font-size: 1.1rem;">
+              &#x20B9; {{profileForm.income | number:0}} per annum
+            </span>
+          </div>
+          <p class="input-hint">Schemes like PM-KISAN, NSP, and PMAY have strict income ceilings.</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Agricultural Land Holding</label>
+            <select class="input-control" ng-model="profileForm.land">
+              <option value="None">None / Landless Household</option>
+              <option value="Small/Marginal (< 5 Acres)">Small / Marginal Farmer (&lt; 2 Hectares / 5 Acres)</option>
+              <option value="Medium/Large (> 5 Acres)">Medium / Large Landholder (&gt; 5 Acres)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">BPL (Below Poverty Line) Cardholder</label>
+            <div class="radio-pill-group">
+              <label class="radio-pill-item">
+                <input type="radio" name="bpl" ng-value="true" ng-model="profileForm.bpl">
+                <span class="radio-pill-label">&#x2714; Yes, Have BPL Card</span>
+              </label>
+              <label class="radio-pill-item">
+                <input type="radio" name="bpl" ng-value="false" ng-model="profileForm.bpl">
+                <span class="radio-pill-label">&#x2716; No / Non-BPL</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="profInterest">Special Welfare Interests / Key Requirements</label>
+          <input id="profInterest" type="text" class="input-control" placeholder="e.g. Housing grant, Skill training, Health insurance, Crop support" ng-model="profileForm.interest">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+          <button type="button" class="btn-secondary" ng-click="setFormStep(1)">
+            &#x2190; Back to Personal
+          </button>
+          <button type="button" class="btn-accent" ng-click="setFormStep(3)">
+            Next: Select Categories &amp; Sub-categories &#x2192;
+          </button>
+        </div>
+      </div>
+
+      <!-- WIZARD STEP 3: Multi-Category & Sub-Category Selection -->
+      <div ng-show="formStep === 3">
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.3rem; color: var(--text-primary); margin-bottom: 0.35rem;">
+            Step 3: Identity &amp; Welfare Categories
+          </h3>
+          <p style="font-size: 0.875rem; color: var(--text-secondary);">
+            A citizen can belong to multiple groups (e.g. both <em>Farmer</em> and <em>SC</em>). Select all that apply to see tailored sub-categories.
+          </p>
+        </div>
+
+        <!-- Category Search Bar -->
+        <div class="category-filter-search">
+          <input
+            type="text"
+            class="input-control"
+            placeholder="Search among 25 categories (e.g. Farmer, Student, Artisan, Disability...)"
+            ng-model="categorySearch"
+          >
+        </div>
+
+        <!-- 25 Official Categories Chips Grid -->
+        <div class="categories-grid">
+          <div
+            ng-repeat="cat in categoriesList | filter:filterCategoryName"
+            class="category-chip-card"
+            ng-class="{'selected': isCategorySelected(cat)}"
+            ng-click="toggleCategory(cat)"
+          >
+            <div class="category-chip-info">
+              <span class="category-num-badge">{{$index + 1}}</span>
+              <span class="category-chip-title">{{cat}}</span>
+            </div>
+            <div>
+              <span ng-if="isCategorySelected(cat)" class="category-check-icon">&#x2714;</span>
+              <span ng-if="!isCategorySelected(cat)" style="color: var(--text-muted); font-size: 0.8rem;">+ Add</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Categories Pill Summary -->
+        <div style="margin-bottom: 1.5rem; background: var(--bg-card-subtle); padding: 0.85rem 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+            Selected Main Categories ({{profileForm.categories.length}}):
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <span ng-if="profileForm.categories.length === 0" style="font-size: 0.825rem; color: var(--text-muted);">
+              None selected yet. Click any of the 25 categories above.
+            </span>
+            <span
+              ng-repeat="selectedCat in profileForm.categories"
+              style="background: var(--civic-navy); color: #fff; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); font-size: 0.775rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;"
+            >
+              {{selectedCat}}
+              <a href="" ng-click="toggleCategory(selectedCat); $event.stopPropagation();" style="color: var(--marigold); text-decoration: none; font-weight: 800;">&times;</a>
+            </span>
+          </div>
+        </div>
+
+        <!-- DYNAMIC SUB-CATEGORIES SECTION FOR EACH SELECTED CATEGORY -->
+        <div class="subcategories-container" ng-if="profileForm.categories.length > 0">
+          <div class="subcategories-header">
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">
+                Sub-Categories Specification
+              </h4>
+              <p style="font-size: 0.8rem; color: var(--text-secondary);">
+                Select any narrower descriptions that match your situation for maximum eligibility precision:
+              </p>
+            </div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--marigold-hover);">
+              {{profileForm.subCategories.length}} Sub-categories Chosen
+            </div>
+          </div>
+
+          <div ng-repeat="cat in profileForm.categories" class="subcat-category-group" ng-if="taxonomy[cat] && taxonomy[cat].length > 0">
+            <div class="subcat-group-title">
+              &#x25B8; {{cat}} Sub-groups:
+            </div>
+            <div class="subcategories-pills">
+              <label
+                ng-repeat="subCat in taxonomy[cat]"
+                class="subcat-checkbox-label"
+                ng-class="{'selected': isSubCategorySelected(subCat)}"
+              >
+                <input
+                  type="checkbox"
+                  style="display: none;"
+                  ng-checked="isSubCategorySelected(subCat)"
+                  ng-click="toggleSubCategory(subCat)"
+                >
+                <span ng-if="isSubCategorySelected(subCat)">&#x2714;</span>
+                <span ng-if="!isSubCategorySelected(subCat)">+</span>
+                {{subCat}}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+          <button type="button" class="btn-secondary" ng-click="setFormStep(2)">
+            &#x2190; Back to Finances
+          </button>
+          <button type="button" class="btn-accent" ng-click="saveProfile()" style="padding: 0.85rem 2rem;">
+            &#x2714; Save Profile &amp; Discover Schemes &#x2192;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         SCREEN 3: DASHBOARD SCREEN
+         ==================================================================== -->
+    <div ng-switch-when="dashboard">
+      <!-- Dashboard Hero Greeting Banner -->
+      <div class="dashboard-hero">
+        <div class="hero-welcome-content">
+          <h2>Namaste, {{currentUser.profile.name || 'Citizen'}}!</h2>
+          <p>
+            We've analyzed your profile against active Indian central and state welfare programs.
+          </p>
+          <div class="user-quick-tags">
+            <span class="quick-tag">&#x1F4CD; {{currentUser.profile.state || 'All-India'}} ({{currentUser.profile.area}})</span>
+            <span class="quick-tag">&#x20B9; {{currentUser.profile.income | number:0}}/yr</span>
+            <span class="quick-tag" ng-if="currentUser.profile.bpl">&#x2714; BPL Cardholder</span>
+            <span class="quick-tag" ng-repeat="cat in (currentUser.profile.categories || []) | limitTo:3">
+              {{cat}}
+            </span>
+          </div>
+        </div>
+
+        <!-- SVG Circular Match Percentage Ring -->
+        <div class="match-score-widget">
+          <div class="ring-container">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle
+                class="ring-circle-bg"
+                cx="45"
+                cy="45"
+                r="36"
+              />
+              <circle
+                class="ring-circle-val"
+                cx="45"
+                cy="45"
+                r="36"
+                stroke-dasharray="226.2"
+                stroke-dashoffset="{{getDashOffset()}}"
+              />
+            </svg>
+            <div class="ring-text">{{stats.rate}}%</div>
+          </div>
+          <div class="match-score-info">
+            <h4>Eligibility Index</h4>
+            <p>{{stats.eligible}} schemes fully match your profile criteria.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Counter -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon green">&#x2714;</div>
+          <div class="stat-content">
+            <h3>{{stats.eligible}}</h3>
+            <p>Directly Eligible</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber">&#x26A0;</div>
+          <div class="stat-content">
+            <h3>{{stats.mismatch}}</h3>
+            <p>Criteria Mismatch</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple">&#x1F4DA;</div>
+          <div class="stat-content">
+            <h3>{{stats.total}}</h3>
+            <p>Active Schemes</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue">&#x2764;</div>
+          <div class="stat-content">
+            <h3>{{stats.saved}}</h3>
+            <p>Saved Schemes</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Toolbar -->
+      <div class="toolbar-card">
+        <div class="filter-pills">
+          <button class="filter-btn" ng-class="{'active': filters.status === 'All' && !filters.savedOnly}" ng-click="filters.status = 'All'; filters.savedOnly = false;">
+            All Schemes ({{stats.total}})
+          </button>
+          <button class="filter-btn" ng-class="{'active': filters.status === 'ELIGIBLE'}" ng-click="filters.status = 'ELIGIBLE'; filters.savedOnly = false;">
+            &#x2714; Eligible ({{stats.eligible}})
+          </button>
+          <button class="filter-btn" ng-class="{'active': filters.status === 'CRITERIA_MISMATCH'}" ng-click="filters.status = 'CRITERIA_MISMATCH'; filters.savedOnly = false;">
+            &#x26A0; Criteria Mismatch ({{stats.mismatch}})
+          </button>
+          <button class="filter-btn" ng-class="{'active': filters.savedOnly}" ng-click="filters.savedOnly = true; filters.status = 'All';">
+            &#x2764; Bookmarked ({{stats.saved}})
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; flex: 1; justify-content: flex-end; flex-wrap: wrap;">
+          <!-- Category Filter Select -->
+          <select class="input-control" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.85rem;" ng-model="filters.category">
+            <option value="All">All Categories</option>
+            <option ng-repeat="cat in categoriesList" value="{{cat}}">{{cat}}</option>
+          </select>
+
+          <!-- Search Input -->
+          <div class="search-input-box">
+            <span class="search-icon">&#x1F50D;</span>
+            <input
+              type="text"
+              class="input-control"
+              placeholder="Search schemes or benefits..."
+              ng-model="filters.search"
+              style="padding: 0.45rem 0.85rem 0.45rem 2rem; font-size: 0.85rem;"
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Schemes Grid -->
+      <div class="schemes-cards-grid">
+        <div
+          ng-repeat="scheme in schemes | filter:filterScheme"
+          class="scheme-card"
+          ng-click="viewSchemeDetail(scheme)"
+          style="cursor: pointer;"
+        >
+          <!-- Card Header -->
+          <div class="scheme-card-header" style="border-top-color: {{scheme.color || 'var(--civic-navy)'}};">
+            <span class="scheme-cat-pill">{{scheme.cat}}</span>
+            <button
+              class="bookmark-btn"
+              ng-class="{'saved': scheme.is_saved}"
+              ng-click="toggleSavedScheme(scheme, $event)"
+              title="Bookmark scheme"
+            >
+              <span ng-if="scheme.is_saved">&#x2764;</span>
+              <span ng-if="!scheme.is_saved">&#x2661;</span>
+            </button>
+          </div>
+
+          <!-- Card Body -->
+          <div class="scheme-card-body">
+            <h3 class="scheme-title">{{scheme.name}}</h3>
+            <p class="scheme-tagline">{{scheme.tagline}}</p>
+
+            <!-- Eligibility Badge -->
+            <div ng-if="scheme.eligibility">
+              <span
+                class="eligibility-status-badge"
+                ng-class="{
+                  'eligible': scheme.eligibility.is_eligible,
+                  'mismatch': scheme.eligibility.status === 'CRITERIA_MISMATCH',
+                  'ineligible': scheme.eligibility.status === 'NOT_ELIGIBLE'
+                }"
+              >
+                <span ng-if="scheme.eligibility.is_eligible">&#x2714; {{scheme.eligibility.badge}} ({{scheme.eligibility.match_percentage}}% Match)</span>
+                <span ng-if="scheme.eligibility.status === 'CRITERIA_MISMATCH'">&#x26A0; {{scheme.eligibility.badge}} ({{scheme.eligibility.passed_count}}/{{scheme.eligibility.total_count}} Rules)</span>
+                <span ng-if="scheme.eligibility.status === 'NOT_ELIGIBLE'">&#x2716; {{scheme.eligibility.badge}}</span>
+              </span>
+            </div>
+
+            <!-- Benefit Highlight -->
+            <div class="benefit-highlight-box">
+              <strong>Key Benefit:</strong> {{scheme.benefit | limitTo:110}}...
+            </div>
+
+            <!-- Target Category Badges -->
+            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem;">
+              <span
+                ng-repeat="tc in scheme.target_categories | limitTo:3"
+                style="font-size: 0.7rem; background: var(--bg-card-subtle); padding: 0.15rem 0.5rem; border-radius: 4px; color: var(--text-secondary);"
+              >
+                {{tc}}
+              </span>
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div class="scheme-card-footer">
+            <span style="font-size: 0.8rem; color: var(--marigold-hover); font-weight: 700;">
+              View Checklist &amp; Steps &#x2192;
+            </span>
+            <a
+              href="{{scheme.portal}}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="official-portal-link"
+              ng-click="$event.stopPropagation()"
+              title="Opens official government portal in new tab"
+            >
+              &#x1F310; Portal &#x2197;
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div ng-if="(schemes | filter:filterScheme).length === 0" style="text-align: center; padding: 4rem 1rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-top: 2rem;">
+        <div style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem;">&#x1F50D;</div>
+        <h3 style="font-family: var(--font-heading); font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Schemes Found</h3>
+        <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 1.5rem;">
+          No welfare schemes matched your active search query or filter tags. Try clearing filters or revising your categories in Edit Criteria.
+        </p>
+        <button class="btn-secondary" ng-click="filters.search = ''; filters.category = 'All'; filters.status = 'All'; filters.savedOnly = false;">
+          Reset All Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         SCREEN 4: SCHEME DETAIL VIEW
+         ==================================================================== -->
+    <div ng-switch-when="detail" class="detail-view-container" ng-if="selectedScheme">
+      <!-- Back Navigation -->
+      <div class="back-nav-bar">
+        <button class="btn-secondary" ng-click="backToDashboard()">
+          &#x2190; Back to Dashboard
+        </button>
+      </div>
+
+      <!-- Header Card -->
+      <div class="detail-header-card" style="--scheme-accent-color: {{selectedScheme.color || 'var(--civic-navy)'}};">
+        <div class="detail-title-row">
+          <div>
+            <span class="scheme-cat-pill" style="margin-bottom: 0.75rem; display: inline-block;">
+              {{selectedScheme.cat}}
+            </span>
+            <h2>{{selectedScheme.name}}</h2>
+            <p style="font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem;">
+              {{selectedScheme.tagline}}
+            </p>
+          </div>
+          <button
+            class="bookmark-btn"
+            ng-class="{'saved': selectedScheme.is_saved}"
+            ng-click="toggleSavedScheme(selectedScheme, $event)"
+            style="font-size: 1.75rem;"
+            title="Bookmark Scheme"
+          >
+            <span ng-if="selectedScheme.is_saved">&#x2764;</span>
+            <span ng-if="!selectedScheme.is_saved">&#x2661;</span>
+          </button>
+        </div>
+
+        <!-- Official Portal & Actions -->
+        <div class="detail-actions-row">
+          <a
+            href="{{selectedScheme.portal}}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-accent"
+            style="text-decoration: none;"
+          >
+            &#x1F310; Apply on Official Government Portal ({{selectedScheme.portal | limitTo:30}}...) &#x2197;
+          </a>
+          <button class="btn-secondary" ng-click="toggleSavedScheme(selectedScheme, $event)">
+            <span ng-if="selectedScheme.is_saved">&#x2764; Saved to Profile</span>
+            <span ng-if="!selectedScheme.is_saved">&#x2661; Save for Later</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ELIGIBILITY CHECKLIST CARD -->
+      <div class="checklist-card" ng-if="selectedScheme.eligibility">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3>&#x1F4CB; Eligibility Diagnostic Checklist</h3>
+          <span
+            class="eligibility-status-badge"
+            ng-class="{
+              'eligible': selectedScheme.eligibility.is_eligible,
+              'mismatch': selectedScheme.eligibility.status === 'CRITERIA_MISMATCH',
+              'ineligible': selectedScheme.eligibility.status === 'NOT_ELIGIBLE'
+            }"
+          >
+            {{selectedScheme.eligibility.badge}} ({{selectedScheme.eligibility.match_percentage}}% Match)
+          </span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.35rem;">
+          Transparent rule evaluation comparing your profile with the scheme's criteria:
+        </p>
+
+        <div class="checklist-items-list">
+          <div
+            ng-repeat="cond in selectedScheme.eligibility.conditions"
+            class="check-rule-item"
+            ng-class="{'pass': cond.passed, 'fail': !cond.passed}"
+          >
+            <div class="check-rule-icon">
+              <span ng-if="cond.passed">&#x2714;</span>
+              <span ng-if="!cond.passed">&#x2716;</span>
+            </div>
+            <div class="check-rule-text">
+              <h5>{{cond.label}} &mdash; <strong ng-style="{'color': cond.passed ? 'var(--india-green)' : '#ef4444'}">{{cond.passed ? 'PASSED' : 'UNMET'}}</strong></h5>
+              <p>{{cond.detail}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About & Benefits Section -->
+      <div class="checklist-card">
+        <h3>&#x1F4DC; Scheme Overview &amp; Direct Benefits</h3>
+        <p style="margin-top: 1rem; color: var(--text-primary); font-size: 0.95rem; line-height: 1.6;">
+          {{selectedScheme.about}}
+        </p>
+
+        <div style="margin-top: 1.5rem; background: var(--bg-card-subtle); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--marigold);">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
+            Direct Financial &amp; Material Benefits:
+          </h4>
+          <p style="font-size: 0.9rem; color: var(--text-secondary);">
+            {{selectedScheme.benefit}}
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+          <div style="background: var(--bg-card-subtle); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Target Beneficiaries</div>
+            <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-top: 0.25rem;">{{selectedScheme.beneficiaries}}</div>
+          </div>
+          <div style="background: var(--bg-card-subtle); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Application Window / Deadline</div>
+            <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-top: 0.25rem;">{{selectedScheme.deadline}}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Application Roadmap -->
+      <div class="checklist-card" ng-if="selectedScheme.steps && selectedScheme.steps.length > 0">
+        <h3>&#x1F6E0; Official Step-by-Step Procedure</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+          Follow these official steps to complete your registration on the government portal:
+        </p>
+
+        <div class="steps-timeline">
+          <div ng-repeat="step in selectedScheme.steps" class="timeline-step">
+            <div class="timeline-step-badge">{{$index + 1}}</div>
+            <div class="timeline-step-content">
+              <h4>{{step[0]}}</h4>
+              <p>{{step[1]}}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem; text-align: center;">
+          <a
+            href="{{selectedScheme.portal}}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-primary"
+            style="display: inline-flex; text-decoration: none; width: auto; padding: 0.85rem 2rem;"
+          >
+            Launch Official {{selectedScheme.name | limitTo:25}} Portal &#x2197;
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         SCREEN 5: PROFILE & SAVED SCHEMES
+         ==================================================================== -->
+    <div ng-switch-when="profile" class="profile-grid-layout">
+      <!-- Left Column: Citizen Identity Card -->
+      <div class="citizen-badge-card">
+        <div class="citizen-avatar">
+          {{(currentUser.profile.name || 'C').charAt(0).toUpperCase()}}
+        </div>
+        <div class="citizen-name">{{currentUser.profile.name || 'Citizen'}}</div>
+        <div class="citizen-email">&#x2709; {{currentUser.email}}</div>
+
+        <div style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--status-eligible-bg); color: var(--status-eligible-text); padding: 0.25rem 0.75rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; margin-bottom: 1.5rem;">
+          &#x2714; Verified Gmail Citizen Profile
+        </div>
+
+        <div class="profile-summary-tags">
+          <div class="summary-row">
+            <span class="summary-label">Age &amp; Gender:</span>
+            <span class="summary-val">{{currentUser.profile.age}} yrs, {{currentUser.profile.gender}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">State / UT:</span>
+            <span class="summary-val">{{currentUser.profile.state}} ({{currentUser.profile.area}})</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Annual Family Income:</span>
+            <span class="summary-val">&#x20B9; {{currentUser.profile.income | number:0}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Land Holding:</span>
+            <span class="summary-val">{{currentUser.profile.land}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">BPL Card Status:</span>
+            <span class="summary-val">{{currentUser.profile.bpl ? 'Cardholder (Yes)' : 'No'}}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Categories ({{currentUser.profile.categories.length}}):</span>
+            <span class="summary-val">{{(currentUser.profile.categories || []).join(', ') || 'None'}}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-direction: column;">
+          <button class="btn-accent" ng-click="openEditProfileWizard()">
+            &#x270E; Edit Eligibility Criteria
+          </button>
+          <button class="btn-secondary" ng-click="logout()" style="justify-content: center;">
+            &#x23FB; Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Saved Schemes Gallery -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.6rem; color: var(--text-primary);">
+            Saved Welfare Schemes ({{stats.saved}})
+          </h3>
+          <button class="btn-secondary" ng-click="currentScreen = 'dashboard'">
+            Browse All Schemes &#x2192;
+          </button>
+        </div>
+
+        <div ng-if="stats.saved === 0" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 3rem; text-align: center;">
+          <div style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.5rem;">&#x2661;</div>
+          <h4 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;">No schemes bookmarked yet</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Click the heart icon on any scheme card to save it here for fast tracking.
+          </p>
+          <button class="btn-primary" ng-click="currentScreen = 'dashboard'" style="width: auto; margin: 0 auto; padding: 0.65rem 1.5rem;">
+            Explore Schemes Dashboard
+          </button>
+        </div>
+
+        <div class="schemes-cards-grid" style="grid-template-columns: 1fr;" ng-if="stats.saved > 0">
+          <div
+            ng-repeat="scheme in schemes | filter:{is_saved: true}"
+            class="scheme-card"
+            ng-click="viewSchemeDetail(scheme)"
+            style="cursor: pointer;"
+          >
+            <div class="scheme-card-header" style="border-top-color: {{scheme.color || 'var(--civic-navy)'}};">
+              <span class="scheme-cat-pill">{{scheme.cat}}</span>
+              <button class="bookmark-btn saved" ng-click="toggleSavedScheme(scheme, $event)">
+                &#x2764;
+              </button>
+            </div>
+            <div class="scheme-card-body">
+              <h3 class="scheme-title">{{scheme.name}}</h3>
+              <p class="scheme-tagline">{{scheme.tagline}}</p>
+
+              <div class="benefit-highlight-box">
+                <strong>Benefit:</strong> {{scheme.benefit}}
+              </div>
+            </div>
+            <div class="scheme-card-footer">
+              <span style="font-size: 0.8rem; color: var(--marigold-hover); font-weight: 700;">
+                View Checklist &amp; Steps &#x2192;
+              </span>
+              <a
+                href="{{scheme.portal}}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="official-portal-link"
+                ng-click="$event.stopPropagation()"
+              >
+                &#x1F310; Official Portal &#x2197;
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Civic Footer -->
+  <footer class="footer-bar">
+    <p><strong>Yojana Mitra</strong> &mdash; Civic Technology Initiative for Direct Citizen Welfare Access</p>
+    <p style="color: var(--text-muted); font-size: 0.775rem;">
+      All scheme details and official links are sourced from Government of India Ministries and State Portals. Always verify on the official .gov.in / .nic.in domain before submitting documentation.
+    </p>
+  </footer>
+
+  <!-- Toast Notification System -->
+  <div class="toast-container">
+    <div
+      ng-repeat="t in toasts"
+      class="toast-msg"
+      ng-class="{'success': t.type === 'success', 'error': t.type === 'error'}"
+    >
+      <span ng-if="t.type === 'success'">&#x2714;</span>
+      <span ng-if="t.type === 'error'">&#x26A0;</span>
+      <span ng-if="t.type === 'info'">&#x2139;</span>
+      {{t.text}}
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
